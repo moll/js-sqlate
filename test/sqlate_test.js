@@ -3,89 +3,141 @@ var sql = require("..")
 
 describe("Sqlate", function() {
 	describe("as a template tag", function() {
-		it("must return Sql with placeholders and parameters", function() {
-			var s = sql`SELECT * FROM models WHERE id = ${42} AND name = ${"John"}`
-
-			s.must.eql(new Sql(
-				"SELECT * FROM models WHERE id = ? AND name = ?",
-				[42, "John"]
-			))
+		it("must return Sql when not interpolating", function() {
+			var q = sql`SELECT * FROM models WHERE length(name) > 0`
+			q.must.be.an.instanceof(Sql)
+			String(q).must.equal("SELECT * FROM models WHERE length(name) > 0")
+			q.parameters.must.eql([])
 		})
 
-		it("must return Sql by interpolating an empty array", function() {
-			var s = sql`SELECT * FROM models WHERE tags = ${[]}`
-			s.must.eql(new Sql("SELECT * FROM models WHERE tags = ?", [[]]))
+		it("must return Sql when interpolating", function() {
+			var q = sql`SELECT * FROM models WHERE id = ${42} AND name = ${"John"}`
+			q.must.be.an.instanceof(Sql)
+			String(q).must.equal("SELECT * FROM models WHERE id = ? AND name = ?")
+			q.parameters.must.eql([42, "John"])
 		})
 
-		it("must return Sql by interpolating an array with one element",
+		it("must return Sql when interpolating an empty array", function() {
+			var query = sql`SELECT * FROM models WHERE tags = ${[]}`
+			query.must.be.an.instanceof(Sql)
+			String(query).must.equal("SELECT * FROM models WHERE tags = ?")
+			query.parameters.must.eql([[]])
+		})
+
+		it("must return Sql when interpolating an array with one element",
 			function() {
-			var s = sql`SELECT * FROM models WHERE tags = ${["new"]}`
-			s.must.eql(new Sql("SELECT * FROM models WHERE tags = ?", [["new"]]))
+			var query = sql`SELECT * FROM models WHERE tags = ${["new"]}`
+			String(query).must.eql("SELECT * FROM models WHERE tags = ?")
+			query.parameters.must.eql([["new"]])
 		})
 
-		it("must return Sql by interpolating an array with many elements",
+		it("must return Sql when interpolating an array with many elements",
 			function() {
-			var s = sql`SELECT * FROM models WHERE tags = ${["new", "cheap"]}`
-
-			s.must.eql(new Sql(
-				"SELECT * FROM models WHERE tags = ?", [["new", "cheap"]]
-			))
+			var query = sql`SELECT * FROM models WHERE tags = ${["new", "cheap"]}`
+			String(query).must.eql("SELECT * FROM models WHERE tags = ?")
+			query.parameters.must.eql([["new", "cheap"]])
 		})
 
-		it("must return Sql by not interpolating a nested array", function() {
-			var s = sql`SELECT * FROM models WHERE tags = ${["new", ["a", "b"]]}`
-
-			s.must.eql(new Sql(
-				"SELECT * FROM models WHERE tags = ?",
-				[["new", ["a", "b"]]]
-			))
+		it("must return Sql when interpolating a nested array", function() {
+			var query = sql`SELECT * FROM models WHERE tags = ${["new", ["a", "b"]]}`
+			String(query).must.eql("SELECT * FROM models WHERE tags = ?")
+			query.parameters.must.eql([["new", ["a", "b"]]])
 		})
 
-		it("must return Sql by interpolating another instance of Sql", function() {
+		it("must return Sql when interpolating instance of Sql", function() {
 			var filter = sql`(id, name) = (${42}, ${"John"})`
+			var query = sql`SELECT * FROM models WHERE ${filter} AND age > ${9}`
 
-			sql`SELECT * FROM models WHERE ${filter} AND age > ${9}`.must.eql(new Sql(
-				"SELECT * FROM models WHERE (id, name) = (?, ?) AND age > ?",
-				[42, "John", 9]
-			))
+			String(query).must.eql(`
+				SELECT * FROM models WHERE (id, name) = (?, ?) AND age > ?
+			`.trim())
+
+			query.parameters.must.eql([42, "John", 9])
 		})
 
-		it("must return Sql by interpolating another instance of Sql as a tuple",
+		it("must return Sql when interpolating column names and values",
 			function() {
 			var columns = sql.tuple(["name", "age"].map(sql.column))
 			var values = sql.csv([["John", 42], ["Mike", 13]].map(sql.tuple))
+			var query = sql`INSERT INTO models ${columns} VALUES ${values}`
 
-			sql`INSERT INTO models ${columns} VALUES ${values}`.must.eql(new Sql(
-				`INSERT INTO models ("name", "age") VALUES (?, ?), (?, ?)`,
-				["John", 42, "Mike", 13]
-			))
+			String(query).must.equal(`
+				INSERT INTO models ("name", "age") VALUES (?, ?), (?, ?)
+			`.trim())
+
+			query.parameters.must.eql(["John", 42, "Mike", 13])
 		})
 
-		it("must return Sql by interpolating an escaped table name", function() {
-			var s = sql`SELECT * FROM ${sql.table("Models")} WHERE id = ${42}`
-			s.must.eql(new Sql(`SELECT * FROM "Models" WHERE id = ?`, [42]))
+		it("must return Sql when interpolating table name", function() {
+			var query = sql`SELECT * FROM ${sql.table("Models")} WHERE id = ${42}`
+			String(query).must.eql(`SELECT * FROM "Models" WHERE id = ?`)
+			query.parameters.must.eql([42])
 		})
 	})
 
 	describe("Sql", function() {
 		describe(".prototype.toString", function() {
-			it("must return the SQL", function() {
-				var s = sql`SELECT * FROM models WHERE id = ${42} AND name = ${"John"}`
-				String(s).must.equal("SELECT * FROM models WHERE id = ? AND name = ?")
+			describe("given undefined", function() {
+				it("must return the SQL with ? placeholders", function() {
+					String(sql`
+						SELECT * FROM models WHERE id = ${42} AND name = ${"John"}
+					`).must.equal(`
+						SELECT * FROM models WHERE id = ? AND name = ?
+					`)
+				})
 			})
-		})
 
-		describe("sql", function() {
-			it("must return the SQL", function() {
-				var s = sql`SELECT * FROM models WHERE id = ${42} AND name = ${"John"}`
-				s.sql.must.equal("SELECT * FROM models WHERE id = ? AND name = ?")
+			describe("given ?", function() {
+				it("must return the SQL with ? placeholders", function() {
+					sql`
+						SELECT * FROM models WHERE id = ${42} AND name = ${"John"}
+					`.toString("?").must.equal(`
+						SELECT * FROM models WHERE id = ? AND name = ?
+					`)
+				})
+
+				it("must return the SQL with ? placeholders given nested tuples",
+					function() {
+					sql`
+						SELECT * FROM models
+						WHERE name = ${"John"} AND id IN ${sql.tuple([1, 2, 3])}
+						OR name = ${"Mike"}
+					`.toString("?").must.equal(`
+						SELECT * FROM models
+						WHERE name = ? AND id IN (?, ?, ?)
+						OR name = ?
+					`)
+				})
+			})
+
+			describe("given $", function() {
+				it("must return the SQL with $n placeholders", function() {
+					sql`
+						SELECT * FROM models WHERE id = ${42} AND name = ${"John"}
+					`.toString("$").must.equal(`
+						SELECT * FROM models WHERE id = $1 AND name = $2
+					`)
+				})
+
+				it("must return the SQL with $n placeholders given nested tuples",
+					function() {
+					sql`
+						SELECT * FROM models
+						WHERE name = ${"John"} AND id IN ${sql.tuple([1, 2, 3])}
+						OR name = ${"Mike"}
+					`.toString("$").must.equal(`
+						SELECT * FROM models
+						WHERE name = $1 AND id IN ($2, $3, $4)
+						OR name = $5
+					`)
+				})
 			})
 		})
 
 		describe("text", function() {
-			it("must return the SQL", function() {
-				var s = sql`SELECT * FROM models WHERE id = ${42} AND name = ${"John"}`
-				s.text.must.equal("SELECT * FROM models WHERE id = ? AND name = ?")
+			it("must return the SQL in PostgreSQL format", function() {
+				var q = sql`SELECT * FROM models WHERE id = ${42} AND name = ${"John"}`
+				q.text.must.equal("SELECT * FROM models WHERE id = $1 AND name = $2")
 			})
 
 			it("must not be enumerable", function() {
@@ -95,15 +147,15 @@ describe("Sqlate", function() {
 
 		describe("parameters", function() {
 			it("must be set to the parameters", function() {
-				var s = sql`SELECT * FROM models WHERE id = ${42} AND name = ${"John"}`
-				s.parameters.must.eql([42, "John"])
+				var q = sql`SELECT * FROM models WHERE id = ${42} AND name = ${"John"}`
+				q.parameters.must.eql([42, "John"])
 			})
 		})
 
 		describe("values", function() {
 			it("must be set to the parameters", function() {
-				var s = sql`SELECT * FROM models WHERE id = ${42} AND name = ${"John"}`
-				s.values.must.eql([42, "John"])
+				var q = sql`SELECT * FROM models WHERE id = ${42} AND name = ${"John"}`
+				q.values.must.eql([42, "John"])
 			})
 
 			it("must not be enumerable", function() {
@@ -112,16 +164,10 @@ describe("Sqlate", function() {
 		})
 	})
 
-	describe(".new", function() {
-		it("must return Sql", function() {
-			sql.new("DEFAULT VALUES").must.eql(new Sql("DEFAULT VALUES", []))
-		})
-	})
-
 	describe(".column", function() {
 		it("must return Sql with escaped name", function() {
-			var s = sql.column(`petite"Lingerie"Models`)
-			s.must.eql(new Sql(`"petite""Lingerie""Models"`, []))
+			var q = sql.column(`petite"Lingerie"Models`)
+			q.must.eql(new Sql(`"petite""Lingerie""Models"`, []))
 		})
 	})
 
@@ -133,35 +179,63 @@ describe("Sqlate", function() {
 
 	describe(".csv", function() {
 		it("must return Sql with comma separated values", function() {
-			var s = sql.csv(["John", 42])
-			s.must.eql(new Sql("?, ?", ["John", 42]))
+			var query = sql.csv(["John", 42])
+			String(query).must.equal("?, ?")
+			query.parameters.must.eql(["John", 42])
+		})
+
+		it("must return Sql given an empty array", function() {
+			var query = sql.csv([])
+			String(query).must.equal("")
+			query.parameters.must.eql([])
 		})
 
 		it("must return Sql given embedded SQL", function() {
-			var s = sql.csv([new Sql("'John'"), "Mike", new Sql("'Rob'")])
-			s.must.eql(new Sql("'John', ?, 'Rob'", ["Mike"]))
+			var query = sql.csv([
+				sql`('John', ${"Smith"})`,
+				"Mike",
+				sql`('Rob', ${"McBob"})`,
+			])
+
+			String(query).must.equal("('John', ?), ?, ('Rob', ?)")
+			query.parameters.must.eql(["Smith", "Mike", "McBob"])
 		})
 
 		it("must not interpolate nested arrays", function() {
-			var s = sql.csv(["John", [1, 2]])
-			s.must.eql(new Sql("?, ?", ["John", [1, 2]]))
+			var query = sql.csv(["John", [1, 2]])
+			String(query).must.equal("?, ?")
+			query.parameters.must.eql(["John", [1, 2]])
 		})
 	})
 
 	describe(".tuple", function() {
 		it("must return Sql with tuples", function() {
-			var s = sql.tuple(["John", 42])
-			s.must.eql(new Sql("(?, ?)", ["John", 42]))
+			var query = sql.tuple(["John", 42])
+			String(query).must.equal("(?, ?)")
+			query.parameters.must.eql(["John", 42])
+		})
+
+		it("must return Sql with empty tuple given an empty array", function() {
+			var query = sql.tuple([])
+			String(query).must.equal("()")
+			query.parameters.must.eql([])
 		})
 
 		it("must return Sql given embedded SQL", function() {
-			var s = sql.tuple([new Sql("'John'"), "Mike", new Sql("'Rob'")])
-			s.must.eql(new Sql("('John', ?, 'Rob')", ["Mike"]))
+			var query = sql.tuple([
+				sql`('John', ${"Smith"})`,
+				"Mike",
+				sql`('Rob', ${"McBob"})`,
+			])
+
+			String(query).must.equal("(('John', ?), ?, ('Rob', ?))")
+			query.parameters.must.eql(["Smith", "Mike", "McBob"])
 		})
 
 		it("must not interpolate nested arrays", function() {
-			var s = sql.tuple(["John", [1, 2]])
-			s.must.eql(new Sql("(?, ?)", ["John", [1, 2]]))
+			var query = sql.tuple(["John", [1, 2]])
+			String(query).must.equal("(?, ?)")
+			query.parameters.must.eql(["John", [1, 2]])
 		})
 	})
 })

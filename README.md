@@ -41,7 +41,17 @@ SELECT * FROM models WHERE id IN (?, ?, ?) AND age > ?
 
 To get the values, get the `parameters` property from the `query`.
 
-Values (incl. arrays) get interpolated as placeholders (question marks) in the SQL itself. When you need arrays to be interpreted as tuples (for a compound comparison or `IN` query) or as just comma separated values, you've got `sql.tuple` and `sql.csv` to help you:
+Values (incl. arrays) get interpolated as placeholders in the SQL itself. By default this is the SQLite variant's question mark (`?`). To select a placeholder appropriate for PostgreSQL, call `Sql.prototype.toString` with `"$"`:
+
+```javascript
+var name = "John"
+var query = sql`SELECT * FROM models WHERE name = ${name}`
+query.toString("$") // => SELECT * FROM models WHERE name = $1
+```
+
+As Sqlate.js explicitly supports Brian Carlson's PostgreSQL library, you can just pass your query to the `Client.prototype.query` function and it picks dollars for you automatically. See below for [more details](#using-with-brian-carlsons-postgresql).
+
+When you need arrays to be interpreted as tuples (for a compound comparison or `IN` query) or as just comma separated values, you've got `sql.tuple` and `sql.csv` to help you:
 
 ```javascript
 var nameAndAge = ["John", 42]
@@ -121,7 +131,7 @@ db.connect()
 var ids = [1, 2, 3]
 var age = 42
 var query = sql`SELECT * FROM models WHERE id IN ${sql.tuple(ids)} AND age > ${age}`
-db.query(String(query), query.parameters)
+db.query(query.toString("$"), query.parameters)
 ```
 
 Because Sqlate.js's `Sql` object also has property aliases for the PostgreSQL's library's [query config object](https://node-postgres.com/features/queries), you can also pass the query directly:
@@ -131,6 +141,8 @@ var ids = [1, 2, 3]
 var age = 42
 db.query(sql`SELECT * FROM models WHERE id IN ${sql.tuple(ids)} AND age > ${age}`)
 ```
+
+This chooses the "$" style of placeholders automatically.
 
 ### Query Helpers
 Rather than create a query and unpack it to SQL and parameters at call sites manually, I recommend you create a two helper functions — `search` and `read` — for accessing your database:
