@@ -27,7 +27,7 @@ var sql = require("sqlate")
 
 var ids = [1, 2, 3]
 var age = 42
-var query = sql`SELECT * FROM models WHERE id IN (${ids}) AND age > ${age}`
+var query = sql`SELECT * FROM models WHERE id IN ${sql.tuple(ids)} AND age > ${age}`
 query instanceof Sql // => true
 ```
 
@@ -41,17 +41,17 @@ SELECT * FROM models WHERE id IN (?, ?, ?) AND age > ?
 
 To get the values, get the `parameters` property from the `query`.
 
-Regular values get interpolated as placeholders (question marks) and arrays get interpolated as a comma-separated list of question marks. This allows using JavaScript arrays both for SQL tuples and [(PostgreSQL) arrays](https://www.postgresql.org/docs/9.6/functions-array.html):
+Values (incl. arrays) get interpolated as placeholders (question marks) in the SQL itself. When you need arrays to be interpreted as tuples (for a compound comparison or `IN` query) or as just comma separated values, you've got `sql.tuple` and `sql.csv` to help you:
 
 ```javascript
 var nameAndAge = ["John", 42]
-var query = sql`SELECT * FROM models WHERE (name, age) = (${ids})`
+var query = sql`SELECT * FROM models WHERE (name, age) = ${sql.tuple(ids)}`
 
 var tags = ["convertible", "v8"]
-var query = sql`SELECT * FROM cars WHERE tags @> ARRAY[${ids}]`
+var query = sql`SELECT * FROM cars WHERE tags @> ARRAY[${sql.csv(tags)}]`
 ```
 
-When you need to get nested tuples, like when creating an insert statement, use `sql.tuple` on each array element. See [below](#creating-insert-statements) for an example.
+When you need to get nested tuples, like when creating an insert statement, use `sql.tuple` on each array element and `sql.csv` on the outer array. See [below](#creating-insert-statements) for an example.
 
 ### Composing SQL
 You can freely compose different pieces of SQL safely by passing one `Sql` instance to another:
@@ -74,10 +74,14 @@ SELECT * FROM models WHERE id = ? AND name ?
 Sqlate.js also has helpers to quote table and column names. These come in handy for insert statements:
 
 ```javascript
-var table = sql.table("models")
-var columns = ["name", "age"].map(sql.column)
-var values = [["John", 42], ["Mike", 13]].map(sql.tuple)
-db.query(sql`INSERT INTO ${table} ${columns} VALUES ${values}`)
+var table = "models"
+var columns = ["name", "age"]
+var values = [["John", 42], ["Mike", 13]]
+
+db.query(sql`
+  INSERT INTO ${sql.table(table)} ${sql.tuple(columns.map(sql.column))}
+  VALUES ${sql.csv(values.map(sql.tuple))}
+`)
 ```
 
 This will generate the following query:
@@ -98,7 +102,7 @@ db.serialize()
 
 var ids = [1, 2, 3]
 var age = 42
-var query = sql`SELECT * FROM models WHERE id IN (${ids}) AND age > ${age}`
+var query = sql`SELECT * FROM models WHERE id IN ${sql.tuple(ids)} AND age > ${age}`
 db.all(String(query), query.parameters)
 ```
 
@@ -116,7 +120,7 @@ db.connect()
 
 var ids = [1, 2, 3]
 var age = 42
-var query = sql`SELECT * FROM models WHERE id IN (${ids}) AND age > ${age}`
+var query = sql`SELECT * FROM models WHERE id IN ${sql.tuple(ids)} AND age > ${age}`
 db.query(String(query), query.parameters)
 ```
 
@@ -125,7 +129,7 @@ Because Sqlate.js's `Sql` object also has property aliases for the PostgreSQL's 
 ```javascript
 var ids = [1, 2, 3]
 var age = 42
-db.query(sql`SELECT * FROM models WHERE id IN (${ids}) AND age > ${age}`)
+db.query(sql`SELECT * FROM models WHERE id IN ${sql.tuple(ids)} AND age > ${age}`)
 ```
 
 ### Query Helpers
