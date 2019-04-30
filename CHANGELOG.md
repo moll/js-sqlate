@@ -1,4 +1,4 @@
-## Unreleased
+## 2.0.0 (Apr 30, 2019)
 - Interpolates arrays always as single values (as opposed to comma separated list) to be more consistent in face of dynamic input.
 
   To now generate `id IN (1, 2, 3)` queries, use `sql.tuple`:
