@@ -49,13 +49,13 @@ var query = sql`SELECT * FROM models WHERE name = ${name}`
 query.toString("$") // => SELECT * FROM models WHERE name = $1
 ```
 
-As Sqlate.js explicitly supports Brian Carlson's PostgreSQL library, you can just pass your query to the `Client.prototype.query` function and it picks dollars for you automatically. See below for [more details](#using-with-brian-carlsons-postgresql).
+As Sqlate.js explicitly supports [Brian Carlson's PostgreSQL library][node-postgresql], you can just pass your query to the `Client.prototype.query` function and it picks dollars for you automatically. See below for [more details](#using-with-brian-carlsons-postgresql-library).
 
-When you need arrays to be interpreted as tuples (for a compound comparison or `IN` query) or as just comma separated values, you've got `sql.tuple` and `sql.csv` to help you:
+When you need arrays to be interpreted as tuples (for a compound comparison or an `IN` query) or as just comma separated values, you've got `sql.tuple` and `sql.csv` to help you:
 
 ```javascript
 var nameAndAge = ["John", 42]
-var query = sql`SELECT * FROM models WHERE (name, age) = ${sql.tuple(ids)}`
+var query = sql`SELECT * FROM models WHERE (name, age) = ${sql.tuple(nameAndAge)}`
 
 var tags = ["convertible", "v8"]
 var query = sql`SELECT * FROM cars WHERE tags @> ARRAY[${sql.csv(tags)}]`
@@ -71,7 +71,7 @@ var id = 42
 var name = "John"
 var idClause = sql`id = ${id}`
 var nameClause = sql`name = ${name}`
-db.query(sql`SELECT * FROM models WHERE ${idClause} AND ${nameClause}`)
+var query = sql`SELECT * FROM models WHERE ${idClause} AND ${nameClause}`
 ```
 
 This will generate the following query:
@@ -88,10 +88,10 @@ var table = "models"
 var columns = ["name", "age"]
 var values = [["John", 42], ["Mike", 13]]
 
-db.query(sql`
+var query = sql`
   INSERT INTO ${sql.table(table)} ${sql.tuple(columns.map(sql.column))}
   VALUES ${sql.csv(values.map(sql.tuple))}
-`)
+`
 ```
 
 This will generate the following query:
@@ -102,8 +102,8 @@ INSERT INTO "models" ("name", "age") VALUES (?, ?), (?, ?)
 
 The two helpers, `sql.table` and `sql.column`, have no differences other than their names. While it's safe to pass untrusted data as values, **watch out for using untrusted data as table and column names**. Sqlate.js quotes them as per the SQL 1999 standard (using two double-quotes `""` for embedded quotes) if you use `sql.column`, but just to be safe, use a whitelist.
 
-### Using with Mapbox's SQLite3
-If you'd like to use Sqlate.js with [Mapbox's SQLite3][node-sqlite3] library, here's an example of how you'd do so:
+### Using with Mapbox's SQLite3 Library
+If you'd like to use Sqlate.js with [Mapbox's SQLite3 library][node-sqlite3], here's an example of how you'd do so:
 
 ```javascript
 var Sqlite3 = require("sqlite3")
@@ -120,8 +120,8 @@ For a complete [Table Data Gateway][table-data-gateway] library for SQLite that 
 
 [table-data-gateway]: https://en.wikipedia.org/wiki/Table_data_gateway
 
-### Using with Brian Carlson's PostgreSQL
-If you'd like to use Sqlate.js with [Brian Carlson's PostgreSQL][node-postgresql] library, here's an example of how you'd do so:
+### Using with Brian Carlson's PostgreSQL Library
+If you'd like to use Sqlate.js with [Brian Carlson's PostgreSQL library][node-postgresql], here's an example of how you'd do so:
 
 ```javascript
 var PgClient = require("pg")
@@ -134,7 +134,7 @@ var query = sql`SELECT * FROM models WHERE id IN ${sql.tuple(ids)} AND age > ${a
 db.query(query.toString("$"), query.parameters)
 ```
 
-Because Sqlate.js's `Sql` object also has property aliases for the PostgreSQL's library's [query config object](https://node-postgres.com/features/queries), you can also pass the query directly:
+Because Sqlate.js's `Sql` object also has property aliases for the [PostgreSQL's library][node-postgresql]'s [query config object](https://node-postgres.com/features/queries), you can also pass the query directly:
 
 ```javascript
 var ids = [1, 2, 3]
