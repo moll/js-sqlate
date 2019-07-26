@@ -1,6 +1,6 @@
 {
 	"name": "sqlate",
-	"version": "2.0.0",
+	"version": "2.1.0",
 	"description": "Tiny tagged template string function for safe SQL. Supports SQlite3, PostgreSQL and others.",
 	"keywords": ["sql", "sqlite", "sqlite3", "postgresql"],
 	"homepage": "https://github.com/moll/js-sqlate",
