@@ -27,7 +27,7 @@ var sql = require("sqlate")
 
 var ids = [1, 2, 3]
 var age = 42
-var query = sql`SELECT * FROM models WHERE id IN ${sql.tuple(ids)} AND age > ${age}`
+var query = sql`SELECT * FROM models WHERE id IN ${sql.in(ids)} AND age > ${age}`
 query instanceof Sql // => true
 ```
 
@@ -51,15 +51,50 @@ query.toString("$") // => SELECT * FROM models WHERE name = $1
 
 As Sqlate.js explicitly supports [Brian Carlson's PostgreSQL library][node-postgresql], you can just pass your query to the `Client.prototype.query` function and it picks dollars for you automatically. See below for [more details](#using-with-brian-carlsons-postgresql-library).
 
-When you need arrays to be interpreted as tuples (for a compound comparison or an `IN` query) or as just comma separated values, you've got `sql.tuple` and `sql.csv` to help you:
+### Tuples
+When you need arrays to be interpreted as tuples (for a compound comparison or an `IN` query) or as just comma separated values, you've got `sql.tuple`, `sql.in` and `sql.csv` to help you:
 
 ```javascript
 var nameAndAge = ["John", 42]
 var query = sql`SELECT * FROM models WHERE (name, age) = ${sql.tuple(nameAndAge)}`
 
+var ids = [1, 2, 3]
+var query = sql`SELECT * FROM cars WHERE id IN ${sql.in(ids)}`
+
 var tags = ["convertible", "v8"]
 var query = sql`SELECT * FROM cars WHERE tags @> ARRAY[${sql.csv(tags)}]`
 ```
+
+`sql.tuple` and `sql.in` differ in the way they handle empty arrays. The former gives you an empty tuple (`()`) for an empty array, which will cause a SQL syntax error in an `IN` query. That's where `sql.in` comes in handy — it returns `(NULL)` so an `IN` query fails to match. Note however that the way SQL's trinary logic works, a `NOT IN` query with a null value (`id NOT IN (NULL)` or even `id NOT IN (1, NULL, 3)`) will also never match, which isn't what you probably want. To ensure both empty arrays and nulls in a `NOT IN` clause work, use `COALESCE`:
+
+```javascript
+var ids = []
+var query = sql`
+  SELECT * FROM cars
+  WHERE COALESCE(id NOT IN ${sql.in(ids)}, true)
+`
+```
+
+The above will create the following SQL, which should behave correctly in the face of NULLs:
+
+```sql
+SELECT * FROM cars
+WHERE COALESCE(id NOT IN (NULL), true)
+```
+
+Here's a table of what `sql.tuple`, `sql.in` and `sql.csv` generate:
+
+Sqlate                 | SQL
+-----------------------|----
+`sql.tuple([])`        | `()`
+`sql.tuple([1])`       | `(1)`
+`sql.tuple([1, 2, 3])` | `(1, 2, 3)`
+`sql.in([])`           | `(NULL)`
+`sql.in([1])`          | `(1)`
+`sql.in([1, 2, 3])`    | `(1, 2, 3)`
+`sql.csv([])`          | _Nothing_
+`sql.csv([1])`         | `1`
+`sql.csv([1, 2, 3])`   | `1, 2, 3`
 
 When you need to get nested tuples, like when creating an insert statement, use `sql.tuple` on each array element and `sql.csv` on the outer array. See [below](#creating-insert-statements) for an example.
 

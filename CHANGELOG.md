@@ -1,3 +1,9 @@
+## Unreleased
+- Adds `sql.in` for easier use in `IN` queries.
+
+  Given an empty array, `sql.in` returns `(NULL)`. This prevents a SQL syntax error due to the empty tuple (`()`) you'd get with `sql.tuple` while still causing the `IN` query to not match anything. Note however that a `NOT IN (NULL)` query will always fail to match. See the README on how to handle that.
+
+
 ## 2.0.0 (Apr 30, 2019)
 - Interpolates arrays always as single values (as opposed to comma separated list) to be more consistent in face of dynamic input.
 

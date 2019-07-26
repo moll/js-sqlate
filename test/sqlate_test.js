@@ -238,4 +238,35 @@ describe("Sqlate", function() {
 			query.parameters.must.eql(["John", [1, 2]])
 		})
 	})
+
+	describe(".in", function() {
+		it("must return Sql with tuples", function() {
+			var query = sql.in(["John", 42])
+			String(query).must.equal("(?, ?)")
+			query.parameters.must.eql(["John", 42])
+		})
+
+		it("must return Sql with null tuple given an empty array", function() {
+			var query = sql.in([])
+			String(query).must.equal("(NULL)")
+			query.parameters.must.eql([])
+		})
+
+		it("must return Sql given embedded SQL", function() {
+			var query = sql.in([
+				sql`('John', ${"Smith"})`,
+				"Mike",
+				sql`('Rob', ${"McBob"})`,
+			])
+
+			String(query).must.equal("(('John', ?), ?, ('Rob', ?))")
+			query.parameters.must.eql(["Smith", "Mike", "McBob"])
+		})
+
+		it("must not interpolate nested arrays", function() {
+			var query = sql.in(["John", [1, 2]])
+			String(query).must.equal("(?, ?)")
+			query.parameters.must.eql(["John", [1, 2]])
+		})
+	})
 })

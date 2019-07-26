@@ -6,12 +6,14 @@ var EMPTY_ARR = Array.prototype
 var TYPE_ERR = "SQL should be a string: "
 var EMPTY_SQL = new Sql([])
 var EMPTY_TUPLE = new Sql(["()"])
+var NULL_TUPLE = new Sql(["(NULL)"])
 exports = module.exports = sql
 exports.Sql = Sql
 exports.column = newColumn
 exports.table = newColumn
 exports.csv = csv
 exports.tuple = tuple
+exports.in = tupleOrNull
 
 function Sql(sqls, params) {
 	if (typeof sqls == "string") sqls = [sqls]
@@ -70,6 +72,12 @@ function csv(array) {
 function tuple(tuple) {
 	if (!isArray(tuple)) throw new TypeError("Not an array: " + tuple)
 	if (tuple.length == 0) return EMPTY_TUPLE
+	return interpolate(concat("(", repeat(tuple.length - 1, ", "), ")"), tuple)
+}
+
+function tupleOrNull(tuple) {
+	if (!isArray(tuple)) throw new TypeError("Not an array: " + tuple)
+	if (tuple.length == 0) return NULL_TUPLE
 	return interpolate(concat("(", repeat(tuple.length - 1, ", "), ")"), tuple)
 }
 
