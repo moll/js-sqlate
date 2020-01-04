@@ -65,7 +65,7 @@ var tags = ["convertible", "v8"]
 var query = sql`SELECT * FROM cars WHERE tags @> ARRAY[${sql.csv(tags)}]`
 ```
 
-`sql.tuple` and `sql.in` differ in the way they handle empty arrays. The former gives you an empty tuple (`()`) for an empty array, which will cause a SQL syntax error in an `IN` query. That's where `sql.in` comes in handy — it returns `(NULL)` so an `IN` query fails to match. Note however that the way SQL's trinary logic works, a `NOT IN` query with a null value (`id NOT IN (NULL)` or even `id NOT IN (1, NULL, 3)`) will also never match, which isn't what you probably want. To ensure both empty arrays and nulls in a `NOT IN` clause work, use `COALESCE`:
+`sql.tuple` and `sql.in` differ in the way they handle empty arrays. The former gives you an empty tuple (`()`) for an empty array, which will cause a SQL syntax error in an `IN` query. That's where `sql.in` comes in handy — it returns `(NULL)` so an `IN` query fails to match. Note however that the way SQL's ternary logic works, a `NOT IN` query with a null value (`id NOT IN (NULL)` or even `id NOT IN (1, NULL, 3)`) will also never match, which isn't what you probably want. To ensure both empty arrays and nulls in a `NOT IN` clause work, use `COALESCE`:
 
 ```javascript
 var ids = []
