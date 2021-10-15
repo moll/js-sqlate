@@ -1,4 +1,4 @@
-## Unreleased
+## 2.2.0 (Oct 15, 2021)
 - Adds `sql.concat` for concatenating an array of SQLs.  
   This could be useful for generating a series of `AND`s or `ORs`:
 
