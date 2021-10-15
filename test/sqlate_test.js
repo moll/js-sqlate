@@ -269,4 +269,51 @@ describe("Sqlate", function() {
 			query.parameters.must.eql(["John", [1, 2]])
 		})
 	})
+
+	describe(".concat", function() {
+		it("must return empty Sql given empty array", function() {
+			var query = sql.concat([])
+			query.must.be.an.instanceof(Sql)
+			String(query).must.equal("")
+			query.parameters.must.eql([])
+		})
+
+		it("must return Sql given one element with no parameters", function() {
+			var query = sql.concat([new Sql("SELECT 42")])
+			query.must.be.an.instanceof(Sql)
+			String(query).must.equal("SELECT 42")
+			query.parameters.must.eql([])
+		})
+
+		it("must return Sql given one element with parameters", function() {
+			var query = sql.concat([new Sql("SELECT ", [42])])
+			query.must.be.an.instanceof(Sql)
+			String(query).must.equal("SELECT ")
+			query.parameters.must.eql([42])
+		})
+
+		it("must return Sql given elements with no parameters", function() {
+			var query = sql.concat([
+				sql`SELECT 13`,
+				sql`, 37, 42`,
+				sql`, 69`
+			])
+
+			query.must.be.an.instanceof(Sql)
+			String(query).must.equal("SELECT 13, 37, 42, 69")
+			query.parameters.must.eql([])
+		})
+
+		it("must return Sql given elements with parameters", function() {
+			var query = sql.concat([
+				sql`SELECT ${13}`,
+				sql`, ${37}, ${42}`,
+				sql`, ${69}`
+			])
+
+			query.must.be.an.instanceof(Sql)
+			String(query).must.equal("SELECT ?, ?, ?, ?")
+			query.parameters.must.eql([13, 37, 42, 69])
+		})
+	})
 })

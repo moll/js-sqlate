@@ -115,6 +115,22 @@ This will generate the following query:
 SELECT * FROM models WHERE id = ? AND name ?
 ```
 
+When you need to interpolate an array of generated SQL, use `sql.concat`:
+
+```javascript
+var ranges = [[10, 15], [25, 30], [40, 45]]
+
+sql`
+  SELECT * FROM models
+  WHERE age = 0
+  ${sql.concat(ranges.map(([a, b]) => sql` OR age BETWEEN ${a} AND ${b}`))}
+`
+```
+
+Without `sql.concat`, the interpolated array (from `ranges.map` in the example)
+would be considered a regular parameter to be passed to the database, not
+something that contains SQL inside.
+
 ### Creating Insert Statements
 Sqlate.js also has helpers to quote table and column names. These come in handy for insert statements:
 

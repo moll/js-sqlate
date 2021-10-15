@@ -1,3 +1,17 @@
+## Unreleased
+- Adds `sql.concat` for concatenating an array of SQLs.  
+  This could be useful for generating a series of `AND`s or `ORs`:
+
+  ```javascript
+  var ranges = [[10, 15], [25, 30], [40, 45]]
+
+  sql`
+    SELECT * FROM models
+    WHERE age = 0
+    ${sql.concat(ranges.map(([a, b]) => sql` OR age BETWEEN ${a} AND ${b}`))}
+  `
+  ```
+
 ## 2.1.0 (Jul 26, 2019)
 - Adds `sql.in` for easier use in `IN` queries.
 

@@ -14,6 +14,7 @@ exports.table = newColumn
 exports.csv = csv
 exports.tuple = tuple
 exports.in = tupleOrNull
+exports.concat = concatSqls
 
 function Sql(sqls, params) {
 	if (typeof sqls == "string") sqls = [sqls]
@@ -61,6 +62,15 @@ function interpolate(strings, params) {
 	}
 
 	return new Sql(sqls, flatten(params.map(toParams)))
+}
+
+function concatSqls(sqls) {
+  return sqls.reduce(function(sql, el) {
+		sql.sqls[sql.sqls.length - 1] += el.sqls[0]
+		Array.prototype.push.apply(sql.sqls, el.sqls.slice(1))
+    Array.prototype.push.apply(sql.parameters, el.parameters)
+    return sql
+  }, new Sql("", []))
 }
 
 function csv(array) {
